@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: research_agent/Dockerfile
+    container_name: research-agent-backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    # Writes CLI-mode reports (Result/<topic>/report.md) back to the host.
+    volumes:
+      - ./Result:/app/Result
+    # The React dev server (in the browser) talks to ws://localhost:8000,
+    # which maps to this container via the published port. No extra
+    # service discovery needed.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: research-agent-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

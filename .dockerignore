@@ -1,0 +1,12 @@
+# Root build context (research_agent/Dockerfile)
+# Everything listed here stays on the host and never enters the image.
+.git
+.commandcode
+.venv
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.pyc
+*.langgraph
+checkpoints
+.env
