@@ -1,0 +1,39 @@
+# ---- Core LangGraph / LangChain ----
+langgraph
+langchain
+langchain-core
+
+# ---- Persistence: checkpointer + long-term store ----
+# start with in-memory (built into langgraph, no extra install needed)
+# uncomment when you move to real persistence:
+# langgraph-checkpoint-sqlite      # local/dev persistence
+# langgraph-checkpoint-postgres    # prod persistence + Store
+# psycopg[binary]                 # postgres driver, needed by langgraph-checkpoint-postgres
+
+# ---- LLM providers ----
+# OpenRouter is OpenAI-API-compatible, so the openai-compatible langchain client works
+langchain-openai        # used to talk to OpenRouter (worth-it + final verdict nodes)
+boto3                   # AWS SDK, required for Bedrock (deep-dive nodes)
+langchain-aws           # ChatBedrock wrapper for deep-dive sub-agents
+
+# ---- Search / scraping ----
+tavily-python            # Tavily web search
+langchain-tavily          # optional: LangChain tool wrapper around Tavily
+beautifulsoup4            # HTML parsing if you scrape pages beyond what Tavily returns
+requests                  # plain HTTP calls where you don't need a full scraping lib
+lxml                      # faster HTML/XML parser backend for BeautifulSoup
+
+# ---- Config / validation ----
+python-dotenv             # load API keys from .env
+pydantic                  # structured output / schema validation for sub-agent results
+
+# ---- Reliability ----
+tenacity                  # retry logic around flaky API/network calls (search, scraping, LLM)
+
+# ---- Phase 2: API + streaming to the UI ----
+fastapi
+uvicorn[standard]
+websockets
+
+# ---- Observability (optional but useful while learning) ----
+# langsmith                # trace every node execution, see exact inputs/outputs per run

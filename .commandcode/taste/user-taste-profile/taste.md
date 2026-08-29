@@ -1,0 +1,28 @@
+# User Taste Profile
+- Prefers Q&A / explanation BEFORE code is written; explicitly asks for file breakdowns ("First give me info on this file, what it is. The parts in the file. Step by step we can build it"). Confidence: 0.95
+- Prefers bottom-up build order (sub-agents first, then manager/orchestration), not top-down. Confidence: 0.8
+- Wants Send() for fan-out placed INSIDE the manager node (not in a separate dispatch node). Confidence: 0.85
+- Wants an orchestration/aggregation node between subgraph fan-in and the next manager step. Confidence: 0.8
+- Prefers sub-agents implemented as LangGraph sub-graphs with their own state, writing the full updated record back to parent state. Confidence: 0.9
+- Prefers operator.add reducer for parallel writes of list fields (e.g., opportunities). Confidence: 0.85
+- Prefers add_messages reducer from langgraph.graph.message for the messages field. Confidence: 0.9
+- Uses TWO LLM providers split by purpose: Bedrock for information gathering (deep-dive/search), OpenRouter for decision-making/analysis. Confidence: 0.95
+- Wants both LLM clients to coexist in the project (not pick one); each should auto-load API keys from .env at construction. Confidence: 0.95
+- Prefers LLM factory functions in dedicated subfolders (`llm/BedrockAPI/`, `llm/OpenRouterAPI/`) that take params like model name, temperature, etc., and read keys from .env. Confidence: 0.9
+- Explicitly REJECTS a unified `get_llm(provider=...)` factory/registry — wants direct imports, not an abstraction layer. ("Noo let not create LLm modules") Confidence: 0.95
+- Uses Bedrock via boto3 Converse API with Bearer token auth (AWS_BEARER_TOKEN_BEDROCK + BEDROCK_BASE_URL), not IAM keys. Confidence: 0.85
+- For Tavily: keep client lazy and module-level cached (e.g., `_get_tavily()` helper). Same pattern requested for Bedrock client. Confidence: 0.9
+- Wants comments with explanations in code ("Build the entire file with comments with explaination"). Confidence: 0.85
+- Uses brief, direct corrections ("Noo let not...") — short imperatives over verbose feedback. Confidence: 0.8
+- Prefers TypedDict + Annotated reducers for LangGraph state schemas. Confidence: 0.85
+- Stores API keys and model names in a single `.env` at project root; expects `.env.example` with placeholders for git safety. Confidence: 0.9
+- Uses `.gitignore` to exclude `.env`, `.venv/`, `__pycache__/`, editor dirs (`.vscode/`, `.idea/`). Confidence: 0.85
+- LLM directory lives inside the package (e.g., `research_agent/llm/`), not at project root. Confidence: 0.8
+- Wants env-driven config (model IDs, base URLs, app names) — no hardcoded values in LLM client classes. Confidence: 0.9
+- Mentions specific technical context unprompted (LangGraph semantics, Send() fan-in behavior) — appreciates technical depth, not dumbed-down explanations. Confidence: 0.85
+- Will push back on over-engineering / unsolicited scaffolding — wants code only when explicitly requested in current message. Confidence: 0.9
+- Uses slash commands (`/init`, `/compact`, `/context`) for session management. Confidence: 0.7
+- Reports UX gaps in plain user-facing terms ("i am not able to see the opportunities and approve them. One or all") — expects the assistant to translate a missing-UI complaint into the right scope (new REST endpoint + hook + component) and ask via ask_user_question before scaffolding. Confidence: 0.85
+- Wants end-to-end features (e.g. HITL approval) to be completable from the browser UI without falling back to curl/terminal workarounds — flags the absence of UI buttons as a blocker for the feature being usable. Confidence: 0.9
+- Asks for explicit "stop" + "run" commands after each change so they can manage dev servers themselves (e.g. "Stop all process backend frontend. And give me command to run"). Confidence: 0.85
+- Writes in casual lowercase style with dropped apostrophes/contractions ("can i", "Lets say", "i want to see") — informal chat register, not formal prose. Confidence: 0.8

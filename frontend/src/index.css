@@ -1,0 +1,73 @@
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f1115;
+  color: #e6e6e6;
+}
+
+/* Markdown viewer — react-markdown ships plain elements; this gives them
+   readable spacing and inline code styling against the dark theme. */
+.report-markdown h1, .report-markdown h2, .report-markdown h3 {
+  margin: 24px 0 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.report-markdown h1 { font-size: 22px; border-bottom: 1px solid #2a2f3a; padding-bottom: 6px; }
+.report-markdown h2 { font-size: 18px; }
+.report-markdown h3 { font-size: 15px; }
+.report-markdown p { margin: 0 0 12px; }
+.report-markdown ul, .report-markdown ol { margin: 0 0 12px; padding-left: 22px; }
+.report-markdown li { margin-bottom: 4px; }
+.report-markdown code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12.5px;
+  background: #0f1115;
+  border: 1px solid #2a2f3a;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #d1d5db;
+}
+.report-markdown pre {
+  background: #0f1115;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.report-markdown pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+.report-markdown blockquote {
+  border-left: 3px solid #3b82f6;
+  margin: 0 0 12px;
+  padding: 4px 12px;
+  color: #9ca3af;
+}
+.report-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 12px;
+}
+.report-markdown th, .report-markdown td {
+  border: 1px solid #2a2f3a;
+  padding: 6px 10px;
+  text-align: left;
+}
+.report-markdown th {
+  background: #1a1d24;
+  font-weight: 600;
+}
+.report-markdown a {
+  color: #93c5fd;
+  text-decoration: underline;
+}

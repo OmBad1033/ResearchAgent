@@ -1,0 +1,40 @@
+# User Taste — Command Code
+- Rejects over-engineered abstractions when simpler suffices (e.g., rejected `get_llm()` factory with "Noo let not create LLm modules"). Confidence: 0.85
+- Prefers mentor-style interaction (explain before build, Q&A first, code second) rather than silent implementation. Confidence: 0.95
+- When learning a new framework (e.g., LangGraph), wants concept-level walkthroughs of mechanics interleaved with implementation — explicitly asks "explain me how you spawned sub agents, how was human in loop added, how was it sent to frontend" alongside doc/feature requests. Wants the why/architecture explained, not just the what. Confidence: 0.9
+- Wants comprehensive explanation documents that serve as learning resources — detailed markdown files with diagrams, code snippets, step-by-step flow walkthroughs, and pattern summaries (e.g., created `explain.md` with full LangGraph architecture breakdown for learning purposes). Confidence: 0.85
+- After consuming/creating an explanation doc, drills into a single specific mechanism with a follow-up question (e.g., "When i route to deep dive how does the deep dive sub agent know which opportunity to deep dive into") rather than moving on — wants to understand the "clever" design choices behind each pattern, not just the overall architecture. Confidence: 0.85
+- Comfortable with confirmation prompts (A–E style) before non-trivial changes — accepts the back-and-forth but expects them to converge to action. Confidence: 0.7
+- Wants concepts explained step-by-step before implementation: "But dont directly start building. First give me info on this file, what it is. The parts in the file." Confidence: 0.95
+- Asks for review of own plans before executing: shows draft code, asks "Is this a good idea? If yes or no why, what is the better approach". Confidence: 0.9
+- Discusses architectural trade-offs before coding (e.g., top-down vs bottom-up build order). Confidence: 0.85
+- Likes creating empty file/folder skeletons first, then filling in content later ("dont add any content in the files yet"). Confidence: 0.85
+- Uses Python 3.14 union syntax (`str | None`) in code. Confidence: 0.9
+- Wants comments in code files explaining parts/sections. Confidence: 0.85
+- Prefers `.env` files with `.env.example` placeholder template + `.gitignore` that excludes `.env`. Confidence: 0.9
+- LangGraph: prefers `operator.add` reducer for parallel writes of opportunities. Confidence: 0.95
+- LangGraph: prefers `add_messages` from `langgraph.graph.message` for the `messages` field. Confidence: 0.95
+- LangGraph: prefers sub-graph architecture with own state schema for sub-agents; sub-graphs return `list[Opportunity]` so parent `operator.add` concatenates correctly. Confidence: 0.9
+- LangGraph: prefers `Send()` inside the manager node for fan-out, with an `orchestration_node` between fan-in and next manager pass. Confidence: 0.9
+- LLM providers: explicitly chose OpenRouter for decision-making nodes and Bedrock for info-gathering (deep-dive) agents. Confidence: 0.95
+- Wants LLM client classes in dedicated folders (`llm/BedrockAPI/`, `llm/OpenRouterAPI/`) that auto-load keys from `.env`, accept params like model name + temperature. Confidence: 0.85
+- Bedrock: uses bearer-token auth (`AWS_BEARER_TOKEN_BEDROCK`) with custom `BEDROCK_BASE_URL` (e.g., Mantle endpoint), not standard AWS sigv4 — uses OpenAI-compatible client against that base URL. Confidence: 0.9
+- Wants external API clients (Tavily, Bedrock) instantiated lazily and cached at module level (e.g., `_get_tavily()`, `_get_bedrock()` helpers). Confidence: 0.9
+- Web search: Tavily for deep-dive agents. Confidence: 0.95
+- Env loading: `python-dotenv` via `load_dotenv()`. Confidence: 0.95
+- Package layout: `research_agent/{graph,llm,tools}/...` with `__init__.py` per package. Confidence: 0.85
+- Splits nodes into `research_agent/graph/nodes/` and subgraphs into `research_agent/graph/subgraphs/`. Confidence: 0.85
+- Splits LLM clients by provider into subfolders (e.g., `llm/BedrockAPI/`, `llm/OpenRouterAPI/`). Confidence: 0.85
+- For LangGraph HITL: wants `interrupt()` + `Command(resume=...)` semantics; approval router branches on `hitl_mode` ("human" | "ai"). Confidence: 0.9
+- Main flow shape: START → manager → opportunity_discovery → approval_router → (human_approval | ai_approval) → manager → [deep_dive via Send] → orchestration → manager → [worth_it via Send] → orchestration → manager → synthesis → END. Confidence: 0.9
+- Checkpointer: starts with `InMemorySaver`, plans migration to `PostgresSaver`. Confidence: 0.85
+- Three-graph structure: main + 2 sub-graphs (`deep_dive_subgraph`, `worth_it_subgraph`). Confidence: 0.9
+- Phase-2 plans: FastAPI + WebSocket + React UI on top of the LangGraph backend. Confidence: 0.8
+- Files named like `OpenRouterLLM.py`, `BedrockLLM.py` use PascalCase filenames matching class names. Confidence: 0.7
+- Uses `@filename` syntax in prompts to reference files in the working directory (e.g., `@backend_plan.md`, `@contract.md`). Confidence: 0.95
+- Often pairs an implementation directive with a parallel "keep a note on X" requirement — wants the assistant to maintain a running notes/scratchpad alongside implementation work, not just produce code. Confidence: 0.85
+- Gives high-level, open-ended directives ("start implementing X and keep a note on Y") and trusts the assistant to scope, ask blocking questions, then proceed — not micromanaging step-by-step at that level, but wants big decisions surfaced. Confidence: 0.85
+- Frames new features in user-facing/UI terms (e.g., "give inputs like research inputs like topic, approval type", "view the report in md previewer") rather than technical specs — wants the assistant to translate intent into concrete UX and contract decisions, not pre-spec the UI for them. Confidence: 0.8
+- When a feature is unusable from the UI (e.g. human-mode approval has no browser button), expects the assistant to surface the gap, ask via ask_user_question (with options ranging from full UI to no-code workaround), then implement the recommended option. Confidence: 0.85
+- Wants both backend AND frontend changes paired when adding a new flow (e.g. new `/opportunities` REST endpoint + `useRunOpportunities` hook + `ApprovalPanel` component + `HistoryDrawer` integration + `contract.md` update + `NOTES.md` file-map update) — keep contract and notes in sync with code changes. Confidence: 0.9
+- Documents new REST endpoints inline in `contract.md` under a "REST: <name>" section with status code, JSON shape, and rationale — treats contract.md as the source of truth that the frontend and backend both read against. Confidence: 0.9
