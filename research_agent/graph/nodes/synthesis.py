@@ -130,6 +130,17 @@ def synthesis_node(state: ResearchState) -> dict:
     opportunities: dict[str, Opportunity] = state.get("opportunities", {})
     domain = state.get("domain", "(unknown)")
 
+    # Only report on approved opportunities: discovery may find more than
+    # approval keeps (e.g. 5 discovered, 4 approved), and the unapproved
+    # ones never go through deep-dive/worth-it so they must not fail
+    # validation below. Approval always runs before synthesis is
+    # reachable, so a present-but-empty list means "approved nothing" —
+    # which falls through to the stub report instead of crashing.
+    approved_ids = state.get("approved_opportunity_ids")
+    if approved_ids is not None:
+        approved = set(approved_ids)
+        opportunities = {k: v for k, v in opportunities.items() if k in approved}
+
     if not opportunities:
         # Nothing to synthesize. Write a short stub so the caller still
         # gets a deterministic final_report key, but don't burn tokens.

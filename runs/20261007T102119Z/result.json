@@ -1,0 +1,107 @@
+{
+  "domain": "fintech",
+  "agents": {
+    "research": {
+      "url": "http://127.0.0.1:8001",
+      "card": {
+        "name": "Research Agent",
+        "description": "Extracts and evaluates business opportunities/problem statements for a given domain",
+        "supportedInterfaces": [
+          {
+            "url": "http://127.0.0.1:8001",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0"
+          }
+        ],
+        "version": "0.1.0",
+        "capabilities": {
+          "streaming": false
+        },
+        "defaultInputModes": [
+          "text/plain",
+          "application/json"
+        ],
+        "defaultOutputModes": [
+          "application/json"
+        ],
+        "skills": [
+          {
+            "id": "research_opportunities",
+            "name": "Research Opportunities",
+            "description": "Given a domain or problem statement, returns candidate opportunities tagged worth-solving or saturated",
+            "tags": [
+              "research"
+            ]
+          }
+        ]
+      }
+    },
+    "architect": {
+      "url": "http://127.0.0.1:8002",
+      "card": {
+        "name": "Architect Agent",
+        "description": "Designs a solution architecture for a given problem statement",
+        "supportedInterfaces": [
+          {
+            "url": "http://127.0.0.1:8002",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0"
+          }
+        ],
+        "version": "0.1.0",
+        "capabilities": {
+          "streaming": false
+        },
+        "defaultInputModes": [
+          "application/json",
+          "text/plain"
+        ],
+        "defaultOutputModes": [
+          "application/json"
+        ],
+        "skills": [
+          {
+            "id": "design_solution",
+            "name": "Design Solution",
+            "description": "Given a problem statement and research context, proposes an architecture and build approach",
+            "tags": [
+              "architecture",
+              "design"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "trace": [
+    {
+      "agent": "research",
+      "state": "TASK_STATE_FAILED",
+      "message": "Research failed: synthesis: reached terminal node with incomplete opportunities: ['3a33138b']. orchestration should have raised first.",
+      "artifact": null,
+      "artifact_summary": "(no artifact)"
+    },
+    {
+      "agent": "research",
+      "state": "TASK_STATE_FAILED",
+      "message": "Research failed: synthesis: reached terminal node with incomplete opportunities: ['0a7c0786']. orchestration should have raised first.",
+      "artifact": null,
+      "artifact_summary": "(no artifact)"
+    },
+    {
+      "agent": "research",
+      "state": "TASK_STATE_FAILED",
+      "message": "Research failed: synthesis: reached terminal node with incomplete opportunities: ['161141c2']. orchestration should have raised first.",
+      "artifact": null,
+      "artifact_summary": "(no artifact)"
+    },
+    {
+      "agent": "research",
+      "state": "TASK_STATE_FAILED",
+      "message": "Research failed: synthesis: reached terminal node with incomplete opportunities: ['b1ba17bd']. orchestration should have raised first.",
+      "artifact": null,
+      "artifact_summary": "(no artifact)"
+    }
+  ],
+  "summary": "Unable to complete the goal: the required research artifact could not be generated. The Research Agent failed four consecutive attempts for the domain 'fintech', producing no artifact. Since the Architect Agent requires a DataPart containing the full opportunity object from research, no solution design could be attempted. Recommend investigating the Research Agent's availability/endpoint (http://127.0.0.1:8001) and retrying the pipeline once research succeeds."
+}

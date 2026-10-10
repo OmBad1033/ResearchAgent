@@ -1,0 +1,9 @@
+# MCP-style agent registry for the dynamic A2A orchestrator.
+# Add a new agent by appending an entry — no orchestrator code changes needed.
+agents:
+  research:
+    url: http://127.0.0.1:8001
+    enabled: true
+  architect:
+    url: http://127.0.0.1:8002
+    enabled: true

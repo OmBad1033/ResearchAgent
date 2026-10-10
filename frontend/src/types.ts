@@ -91,3 +91,19 @@ export type OpportunitySummary = {
 export type RunOpportunities = {
   opportunities: OpportunitySummary[];
 };
+
+// Solution design — returned by the Architect Agent (A2A) via the
+// backend proxy POST /runs/{runId}/nodes/{nodeId}/design. Field list
+// mirrors architect_agent/schemas.py SolutionDesign exactly.
+export type SolutionDesign = {
+  proposed_stack: string[];
+  components: string[];
+  data_flow_summary: string;
+  deployment_target: string;
+  build_effort_estimate: string;
+  risks: string[];
+  open_questions: string[];
+};
+export type NodeDesignResponse = {
+  design: SolutionDesign;
+};
