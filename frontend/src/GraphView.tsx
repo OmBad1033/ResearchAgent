@@ -8,6 +8,7 @@ import { HistoryDrawer } from './components/HistoryDrawer';
 import { Legend } from './components/Legend';
 import { ReportViewer } from './components/ReportViewer';
 import { ApprovalPanel } from './components/ApprovalPanel';
+import { ArchitectGraphView, type ArchitectOpportunity } from './ArchitectGraphView';
 import { useGraphSocket } from './hooks/useGraphSocket';
 import { applyDagreLayout, LAYOUT_CONFIG } from './lib/layout';
 import { STATIC_NODES } from './data/staticGraph';
@@ -53,6 +54,23 @@ function GraphViewInner({ runId, params, onNewRun }: GraphViewProps) {
 
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  // Full-screen swap: 'research' shows the LangGraph canvas, 'architect'
+  // shows the staged architect canvas for the picked opportunity.
+  const [viewMode, setViewMode] = useState<'research' | 'architect'>('research');
+  const [architectOpp, setArchitectOpp] = useState<ArchitectOpportunity | null>(null);
+
+  // Deep-dive handoff from the report picker: close the research report,
+  // remember the picked opportunity, and swap to the architect canvas.
+  const handleDeepDive = useCallback((oppId: string, title: string, description: string) => {
+    setArchitectOpp({ id: oppId, title, description });
+    setReportOpen(false);
+    setSelectedNodeId(null);
+    setViewMode('architect');
+  }, []);
+
+  const handleBackToResearch = useCallback(() => {
+    setViewMode('research');
+  }, []);
 
   const reactFlow = useReactFlow();
   const lastNodeCountRef = useRef<number>(0);
@@ -124,6 +142,18 @@ function GraphViewInner({ runId, params, onNewRun }: GraphViewProps) {
       return () => clearTimeout(t);
     }
   }, [flowNodes.length, reactFlow]);
+
+  // Architect full-screen swap — replaces the research canvas entirely.
+  // The research WS stays connected underneath; coming back resumes it.
+  if (viewMode === 'architect' && architectOpp) {
+    return (
+      <ArchitectGraphView
+        runId={runId}
+        opportunity={architectOpp}
+        onBack={handleBackToResearch}
+      />
+    );
+  }
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -246,6 +276,7 @@ function GraphViewInner({ runId, params, onNewRun }: GraphViewProps) {
         runId={runId}
         open={reportOpen}
         onClose={() => setReportOpen(false)}
+        onDeepDive={handleDeepDive}
       />
     </div>
   );

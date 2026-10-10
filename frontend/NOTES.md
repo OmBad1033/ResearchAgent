@@ -56,6 +56,7 @@ either way — if Agent 1 rejects the additions, the only changes are: drop
 - **Step 7 — minimap + legend**: MiniMap with status-tinted nodes, Legend in top-left.
 - **Bonus — research inputs form**: `RunParamsForm` modal collects `domain`, `hitl_mode`, optional `report_focus` and `max_opportunities`. Submitted values drive the session-start frame sent on WS open.
 - **Bonus — report viewer**: `ReportViewer` drawer opens via "view report" button in the run-completed banner. Polls `GET /runs/{run_id}/report` until ready, then renders markdown via `react-markdown` + `remark-gfm` with dark-theme styling.
+- **Architect design in drawer**: `HistoryDrawer` shows a "generate design" button for `deep_dive_*` / `worth_it_*` nodes. `useSolutionDesign` POSTs to the backend proxy `POST /runs/{runId}/nodes/{nodeId}/design` (backend does the real server-to-server A2A `SendMessage` to the Architect); renders stack/components/data-flow/deploy/effort/risks/open-questions inline. 404 (no opportunity) and 502 (architect down/failed) surface as error text with retry.
 
 ## File map
 
@@ -73,6 +74,7 @@ frontend/
 │   │   ├── AgentNode.tsx
 │   │   ├── ApprovalPanel.tsx     # NEW: human-approval checkbox UI
 │   │   ├── HistoryDrawer.tsx     # renders ApprovalPanel when paused
+│   │   │                         # + "generate design" (Architect A2A) for dynamic nodes
 │   │   ├── Legend.tsx
 │   │   ├── ReportViewer.tsx
 │   │   └── RunParamsForm.tsx
@@ -83,7 +85,8 @@ frontend/
 │   │   ├── useNodeHistory.ts
 │   │   ├── useResume.ts          # NEW: POST /runs/{id}/resume
 │   │   ├── useRunOpportunities.ts# NEW: GET /runs/{id}/opportunities
-│   │   └── useRunReport.ts
+│   │   ├── useRunReport.ts
+│   │   └── useSolutionDesign.ts  # NEW: POST /runs/{id}/nodes/{node}/design (Architect)
 │   ├── lib/
 │   │   ├── MockRunner.ts
 │   │   ├── layout.ts

@@ -26,6 +26,7 @@ lxml                      # faster HTML/XML parser backend for BeautifulSoup
 # ---- Config / validation ----
 python-dotenv             # load API keys from .env
 pydantic                  # structured output / schema validation for sub-agent results
+pyyaml                    # agents.yaml registry for the dynamic orchestrator
 
 # ---- Reliability ----
 tenacity                  # retry logic around flaky API/network calls (search, scraping, LLM)
@@ -34,6 +35,10 @@ tenacity                  # retry logic around flaky API/network calls (search, 
 fastapi
 uvicorn[standard]
 websockets
+
+# ---- Phase 3: Agent-to-Agent (A2A) servers + orchestrator ----
+a2a-sdk[http-server]
+httpx
 
 # ---- Observability (optional but useful while learning) ----
 # langsmith                # trace every node execution, see exact inputs/outputs per run

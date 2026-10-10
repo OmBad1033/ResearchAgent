@@ -11,6 +11,10 @@ Endpoints:
     GET  /runs/{run_id}/nodes/{node_id}/history
                                   REST detail for a single node. Returns
                                   shape per CONTRACT.md.
+    POST /runs/{run_id}/nodes/{node_id}/design
+                                  Ask the Architect Agent (A2A) for a
+                                  solution design for one opportunity.
+                                  Returns `{design: SolutionDesign}`.
 
 Run with:
     uvicorn research_agent.api.server:app --reload --port 8000
@@ -20,11 +24,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import uuid
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+import httpx
 
 from graph.builder import app as langgraph_app
 from api.event_writer import EventWriter, get_writer
@@ -35,6 +43,14 @@ from api.runner import (
 
 
 log = logging.getLogger(__name__)
+
+
+# Architect Agent (A2A) base URL. Local dev default matches
+# `python -m architect_agent.server --port 8002`. In docker-compose the
+# backend reaches it as http://architect:8002 — set via environment.
+ARCHITECT_AGENT_URL = os.environ.get("ARCHITECT_AGENT_URL", "http://127.0.0.1:8002")
+ARCHITECT_CALL_TIMEOUT_S = float(os.environ.get("ARCHITECT_CALL_TIMEOUT_S", "300"))
+A2A_VERSION_HEADER = "1.0"
 
 
 app = FastAPI(title="Research Agent Bridge")
@@ -54,6 +70,35 @@ app.add_middleware(
 
 class ResumeRequest(BaseModel):
     approved_opportunity_ids: list[str]
+
+
+class DesignRequestBody(BaseModel):
+    """Optional overrides for the Architect call.
+
+    Everything else (opportunity, domain, research notes) comes from the
+    run's own checkpointer state — the frontend only sends tweaks.
+    """
+
+    domain: str | None = None
+    research_notes: str | None = None
+
+
+def _get_run_state(run_id: str) -> dict[str, Any]:
+    """Read the LangGraph checkpointer state for a run or raise 404."""
+    config = {"configurable": {"thread_id": run_id}}
+    try:
+        snapshot = langgraph_app.get_state(config)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not read state for run_id={run_id!r}: {exc}",
+        )
+    if snapshot is None or not snapshot.values:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No state found for run_id={run_id!r}",
+        )
+    return snapshot.values
 
 
 def _node_id_to_opportunity_id(node_id: str) -> str | None:
@@ -196,16 +241,20 @@ async def node_history_endpoint(run_id: str, node_id: str) -> dict[str, Any]:
     verdict fields as null too (see D2 in backend_plan.md — there's no
     separate `reasoning` channel on Opportunity today).
     """
-    config = {"configurable": {"thread_id": run_id}}
     try:
-        snapshot = langgraph_app.get_state(config)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Could not read state for run_id={run_id!r}: {exc}",
-        )
-
-    state = snapshot.values if snapshot else {}
+        state = _get_run_state(run_id)
+    except HTTPException as exc:
+        # No state yet (e.g. run just started, snapshot empty) — match
+        # the historical behaviour: static shape with nulls, not 404.
+        if exc.status_code == 404:
+            return {
+                "node_id": node_id,
+                "opportunity": None,
+                "reasoning": None,
+                "worth_it_verdict": None,
+                "worth_it_reasoning": None,
+            }
+        raise
     opportunities: dict[str, Any] = state.get("opportunities") or {}
 
     opp_id = _node_id_to_opportunity_id(node_id)
@@ -316,3 +365,134 @@ async def run_report_endpoint(run_id: str) -> dict[str, Any]:
         generated_at = now_iso()
 
     return {"markdown": markdown, "generated_at": generated_at}
+
+
+def _a2a_send_message(base_url: str, parts: list[dict[str, Any]]) -> dict[str, Any]:
+    """Send one A2A `SendMessage` JSON-RPC call, return the terminal task.
+
+    Plain httpx + JSON-RPC (same shape as orchestrator/a2a_client.py).
+    Kept local so the :8000 bridge has no import dependency on the
+    orchestrator package.
+    """
+    body = {
+        "jsonrpc": "2.0",
+        "id": "req-" + uuid.uuid4().hex[:8],
+        "method": "SendMessage",
+        "params": {
+            "message": {
+                "messageId": "m-" + uuid.uuid4().hex[:8],
+                "role": "ROLE_USER",
+                "parts": parts,
+            }
+        },
+    }
+    try:
+        resp = httpx.post(
+            base_url.rstrip("/") + "/",
+            json=body,
+            headers={"A2A-Version": A2A_VERSION_HEADER, "Content-Type": "application/json"},
+            timeout=ARCHITECT_CALL_TIMEOUT_S,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Architect Agent unreachable at {base_url}: {exc}",
+        )
+    try:
+        envelope = resp.json()
+    except ValueError:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Architect Agent returned non-JSON (HTTP {resp.status_code})",
+        )
+    if "error" in envelope:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Architect Agent error: {envelope['error']}",
+        )
+    task = (envelope.get("result") or {}).get("task")
+    if not isinstance(task, dict):
+        raise HTTPException(
+            status_code=502,
+            detail=f"Architect Agent returned no task: {envelope}",
+        )
+    return task
+
+
+def _a2a_task_text(task: dict[str, Any]) -> str:
+    """Best-effort human-readable text from a task's status message."""
+    status = task.get("status") or {}
+    msg = status.get("message") or {}
+    texts = [
+        p.get("text", "")
+        for p in (msg.get("parts") or [])
+        if isinstance(p, dict) and p.get("text")
+    ]
+    return "\n".join(texts) or f"task state={status.get('state')}"
+
+
+def _a2a_task_data(task: dict[str, Any]) -> dict[str, Any]:
+    """First DataPart dict from a task's artifacts, or raise 502."""
+    for artifact in task.get("artifacts") or []:
+        if not isinstance(artifact, dict):
+            continue
+        for part in artifact.get("parts") or []:
+            if isinstance(part, dict) and isinstance(part.get("data"), dict):
+                return part["data"]
+    raise HTTPException(
+        status_code=502,
+        detail=f"Architect Agent returned no data artifact: {_a2a_task_text(task)}",
+    )
+
+
+@app.post("/runs/{run_id}/nodes/{node_id}/design")
+async def node_design_endpoint(
+    run_id: str, node_id: str, body: DesignRequestBody | None = None
+) -> dict[str, Any]:
+    """Ask the Architect Agent (A2A) to design a solution for one opportunity.
+
+    The opportunity + domain + research notes come from this run's own
+    checkpointer state; the request body only carries optional overrides.
+    The backend forwards them as an A2A `SendMessage` DataPart to the
+    Architect Agent and returns the resulting `SolutionDesign` verbatim.
+
+    Responses:
+      - 200 `{design: SolutionDesign}` on success.
+      - 404 if the run/node has no opportunity (bad run_id, unknown
+        node_id, static node, or server restarted and checkpoint lost).
+      - 502 if the Architect Agent is unreachable, returns a failed
+        task, or returns no data artifact.
+    """
+    state = _get_run_state(run_id)
+    opportunities: dict[str, Any] = state.get("opportunities") or {}
+    opp_id = _node_id_to_opportunity_id(node_id)
+    opportunity = opportunities.get(opp_id) if opp_id else None
+    if opportunity is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No opportunity for node_id={node_id!r} in run {run_id!r}. "
+                "Design is only available for deep_dive_/worth_it_ nodes "
+                "whose opportunity exists in this run's state."
+            ),
+        )
+
+    design_request = {
+        "opportunity": opportunity,
+        "domain": (body.domain if body and body.domain is not None else state.get("domain", "")),
+        "research_notes": (
+            body.research_notes
+            if body and body.research_notes is not None
+            else (opportunity.get("deep_dive_notes") or "")
+        ),
+    }
+    task = await asyncio.to_thread(
+        _a2a_send_message, ARCHITECT_AGENT_URL, [{"data": design_request}]
+    )
+    task_state = ((task.get("status") or {}).get("state")) or ""
+    if task_state != "TASK_STATE_COMPLETED":
+        raise HTTPException(
+            status_code=502,
+            detail=f"Architect Agent task {task_state}: {_a2a_task_text(task)}",
+        )
+    return {"design": _a2a_task_data(task)}

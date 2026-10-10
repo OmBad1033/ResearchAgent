@@ -165,6 +165,42 @@ The report lives on its own endpoint rather than on `synthesis/history` so the
 report payload doesn't bloat the per-node history shape and so Agent 1 can
 evolve the report path (streaming, regeneration) without touching history.
 
+## REST: solution design (Architect Agent via A2A)
+
+`POST /runs/{run_id}/nodes/{node_id}/design` → `200 OK`
+
+```jsonc
+{
+  "design": {
+    "proposed_stack": ["string"],
+    "components": ["string"],
+    "data_flow_summary": "string",
+    "deployment_target": "string",
+    "build_effort_estimate": "string",
+    "risks": ["string"],
+    "open_questions": ["string"]
+  }
+}
+```
+
+Request body: `{}` normally — the opportunity, domain, and research notes
+come from this run's own checkpointer state. Optional overrides
+`{ "domain": "string?", "research_notes": "string?" }` replace the
+state-derived values before forwarding.
+
+Only `deep_dive_{opp}` / `worth_it_{opp}` node ids are valid. Returns
+`404` for static nodes, unknown node ids, or runs with no checkpoint
+state. Returns `502` when the Architect Agent is unreachable, returns a
+failed task, or returns no data artifact — the `detail` string carries
+the underlying A2A error.
+
+The backend implements this as a true server-to-server A2A call: it builds
+a `DesignRequest` DataPart from run state and POSTs `SendMessage` JSON-RPC
+to the Architect Agent (`ARCHITECT_AGENT_URL`, default
+`http://127.0.0.1:8002`, `http://architect:8002` in docker-compose), then
+returns the `SolutionDesign` artifact verbatim. The frontend's HistoryDrawer
+shows a "generate design" button for dynamic nodes that hits this endpoint.
+
 ## What each agent builds against while working independently
 
 - **Backend agent**: no frontend dependency at all — test with a raw
@@ -184,3 +220,4 @@ evolve the report path (streaming, regeneration) without touching history.
 - [ ] Confirm backend reads `report_focus` and `max_opportunities` from session-start frame (or ignores them gracefully if not implemented).
 - [ ] Confirm `GET /runs/{run_id}/report` is implemented and returns the contract shape.
 - [ ] Confirm `GET /runs/{run_id}/opportunities` is implemented and the human-approval UI can POST `/resume` with the chosen ids.
+- [ ] Confirm `POST /runs/{run_id}/nodes/{node_id}/design` returns a `SolutionDesign` for a dynamic node (Architect reachable) and 404/502 otherwise.
